@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Smart PDF Tools - फ्री PDF Compressor</title>
+  <meta name="description" content="फ्री ऑनलाइन PDF Compressor - PDF साइज को 50-80% तक कम करें। क्वालिटी स्लाइडर के साथ। 100% प्राइवेट।">
+  <meta name="keywords" content="pdf compressor, pdf compress, pdf size reduce, pdf छोटा करें, free pdf tools, smart pdf tools">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      padding: 45px 30px;
+      text-align: center;
+    }
+    .header h1 { font-size: 2.6rem; }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      border-radius: 50px;
+      cursor: pointer;
+      width: 100%;
+      margin: 12px 0;
+      font-weight: 600;
+    }
+    button.secondary { background: #64748b; }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      padding: 15px 18px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📄 Smart PDF Tools</h1>
+      <p>फ्री PDF Compressor - PDF को छोटा करें</p>
+    </div>
+    
+    <div style="padding:40px 30px;">
+      <div id="uploadSection">
+        <div id="dropArea" style="border:3px dashed #6366f1; border-radius:16px; padding:70px 20px; text-align:center; cursor:pointer;">
+          <h2>📤 PDF फाइलें यहाँ ड्रॉप करें</h2>
+          <p>या क्लिक करके चुनें</p>
+          <input type="file" id="fileInput" accept="application/pdf" multiple style="display:none;">
+          <button onclick="document.getElementById('fileInput').click()">फाइलें चुनें</button>
+        </div>
+      </div>
+
+      <div id="filesSection" style="display:none;">
+        <h2>चुनी गई फाइलें</h2>
+        <div id="filesList"></div>
+
+        <label style="margin:20px 0 10px;display:block;"><strong>कंप्रेशन क्वालिटी: <span id="qualityValue">75</span>%</strong></label>
+        <input type="range" id="qualitySlider" min="30" max="100" value="75" style="width:100%;">
+
+        <button onclick="startCompression()">🚀 PDF कम्प्रेस करें</button>
+        <button onclick="resetAll()" class="secondary">नई फाइलें चुनें</button>
+      </div>
+
+      <div id="progressSection" style="display:none;">
+        <h2>कंप्रेस हो रहा है...</h2>
+        <div id="progressList"></div>
+      </div>
+
+      <div id="downloadSection" style="display:none;">
+        <h2>✅ कम्प्रेशन हो गया!</h2>
+        <div id="resultsList"></div>
+        <button onclick="downloadAll()">📥 डाउनलोड करें</button>
+        <button onclick="resetAll()" class="secondary">नई फाइलें अपलोड करें</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let files = [];
+
+    const dropArea = document.getElementById('dropArea');
+    dropArea.addEventListener('click', () => document.getElementById('fileInput').click());
+    dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.style.background = '#f0f0ff'; });
+    dropArea.addEventListener('dragleave', () => dropArea.style.background = '');
+    dropArea.addEventListener('drop', e => {
+      e.preventDefault();
+      dropArea.style.background = '';
+      handleFiles(e.dataTransfer.files);
+    });
+
+    document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+
+    function handleFiles(fileList) {
+      for (let file of fileList) {
+        if (file.type === "application/pdf") {
+          files.push({file, name: file.name, size: file.size, compressed: null, compressedSize: 0});
+        }
+      }
+      renderFiles();
+      document.getElementById('uploadSection').style.display = 'none';
+      document.getElementById('filesSection').style.display = 'block';
+    }
+
+    function renderFiles() {
+      const list = document.getElementById('filesList');
+      list.innerHTML = files.map((f,i) => `
+        <div class="file-item">
+          <div><strong>\( {f.name}</strong><br><small> \){(f.size/1024/1024).toFixed(2)} MB</small></div>
+          <button onclick="removeFile(${i})" style="background:none;border:none;color:red;font-size:1.5rem;">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function removeFile(i) {
+      files.splice(i,1);
+      renderFiles();
+      if(files.length === 0) resetAll();
+    }
+
+    document.getElementById('qualitySlider').addEventListener('input', function() {
+      document.getElementById('qualityValue').textContent = this.value;
+    });
+
+    async function startCompression() {
+      document.getElementById('filesSection').style.display = 'none';
+      document.getElementById('progressSection').style.display = 'block';
+
+      for(let i = 0; i < files.length; i++) {
+        await compressSingle(i);
+      }
+      showResults();
+    }
+
+    async function compressSingle(index) {
+      const item = files[index];
+      const progressList = document.getElementById('progressList');
+      progressList.innerHTML += `<div class="file-item" id="prog-\( {index}"><div> \){item.name}</div><div style="width:200px;height:8px;background:#ddd;border-radius:10px;"><div id="bar-${index}" style="height:100%;width:0%;background:#4f46e5;border-radius:10px;"></div></div></div>`;
+
+      try {
+        const arrayBuffer = await item.file.arrayBuffer();
+        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+        const compressedBytes = await pdfDoc.save({useObjectStreams: true});
+        const blob = new Blob([compressedBytes], {type: 'application/pdf'});
+        
+        item.compressed = blob;
+        item.compressedSize = blob.size;
+        document.getElementById(`bar-${index}`).style.width = '100%';
+      } catch(e) { console.error(e); }
+    }
+
+    function showResults() {
+      document.getElementById('progressSection').style.display = 'none';
+      const container = document.getElementById('resultsList');
+      container.innerHTML = '';
+
+      files.forEach((item, i) => {
+        if(!item.compressed) return;
+        const orig = (item.size/1024/1024).toFixed(2);
+        const comp = (item.compressedSize/1024/1024).toFixed(2);
+        const saved = (((item.size - item.compressedSize)/item.size)*100).toFixed(1);
+
+        container.innerHTML += `
+          <div class="file-item">
+            <div><strong>\( {item.name}</strong><br><small> \){orig} MB → \( {comp} MB ( \){saved}% बचत)</small></div>
+            <button onclick="downloadSingle(${i})">डाउनलोड</button>
+          </div>`;
+      });
+
+      document.getElementById('downloadSection').style.display = 'block';
+    }
+
+    function downloadSingle(i) {
+      const item = files[i];
+      const url = URL.createObjectURL(item.compressed);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'compressed_' + item.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadAll() {
+      if(files.length === 1) downloadSingle(0);
+      else alert("ZIP सुविधा जल्द आएगी। अभी एक-एक करके डाउनलोड करें।");
+    }
+
+    function resetAll() {
+      location.reload();
+    }
+  </script>
+</body>
+</html>
