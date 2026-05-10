@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
   <title>Smart PDF Tools - फ्री PDF Compressor</title>
-  <meta name="description" content="फ्री ऑनलाइन PDF Compressor - PDF साइज को 50-80% तक कम करें। क्वालिटी स्लाइडर के साथ। 100% प्राइवेट।">
-  <meta name="keywords" content="pdf compressor, pdf compress, pdf size reduce, pdf छोटा करें, free pdf tools, smart pdf tools">
+  <meta name="description" content="फ्री PDF Compressor - PDF साइज 50-80% तक कम करें">
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   
@@ -33,7 +31,6 @@
       padding: 45px 30px;
       text-align: center;
     }
-    .header h1 { font-size: 2.6rem; }
     button {
       background: #4f46e5;
       color: white;
@@ -62,39 +59,42 @@
   <div class="container">
     <div class="header">
       <h1>📄 Smart PDF Tools</h1>
-      <p>फ्री PDF Compressor - PDF को छोटा करें</p>
+      <p>फ्री PDF Compressor - बेहतर साइज कम करें</p>
     </div>
     
     <div style="padding:40px 30px;">
+      <!-- Upload Section -->
       <div id="uploadSection">
         <div id="dropArea" style="border:3px dashed #6366f1; border-radius:16px; padding:70px 20px; text-align:center; cursor:pointer;">
-          <h2>📤 PDF फाइलें यहाँ ड्रॉप करें</h2>
-          <p>या क्लिक करके चुनें</p>
+          <h2>📤 PDF फाइलें ड्रॉप करें या चुनें</h2>
+          <p>एक या कई फाइलें</p>
           <input type="file" id="fileInput" accept="application/pdf" multiple style="display:none;">
-          <button onclick="document.getElementById('fileInput').click()">फाइलें चुनें</button>
+          <button onclick="triggerFileSelect()">फाइलें चुनें</button>
         </div>
       </div>
 
+      <!-- Files Selected -->
       <div id="filesSection" style="display:none;">
         <h2>चुनी गई फाइलें</h2>
         <div id="filesList"></div>
 
-        <label style="margin:20px 0 10px;display:block;"><strong>कंप्रेशन क्वालिटी: <span id="qualityValue">75</span>%</strong></label>
-        <input type="range" id="qualitySlider" min="30" max="100" value="75" style="width:100%;">
+        <label style="margin:25px 0 10px;display:block;"><strong>कंप्रेशन क्वालिटी: <span id="qualityValue">70</span>%</strong></label>
+        <input type="range" id="qualitySlider" min="40" max="95" value="70" style="width:100%;">
 
-        <button onclick="startCompression()">🚀 PDF कम्प्रेस करें</button>
+        <button onclick="startCompression()">🚀 सभी PDF कम्प्रेस करें</button>
         <button onclick="resetAll()" class="secondary">नई फाइलें चुनें</button>
       </div>
 
+      <!-- Progress -->
       <div id="progressSection" style="display:none;">
         <h2>कंप्रेस हो रहा है...</h2>
         <div id="progressList"></div>
       </div>
 
+      <!-- Results - FIXED -->
       <div id="downloadSection" style="display:none;">
-        <h2>✅ कम्प्रेशन हो गया!</h2>
+        <h2>✅ कम्प्रेशन पूरा हो गया!</h2>
         <div id="resultsList"></div>
-        <button onclick="downloadAll()">📥 डाउनलोड करें</button>
         <button onclick="resetAll()" class="secondary">नई फाइलें अपलोड करें</button>
       </div>
     </div>
@@ -103,8 +103,13 @@
   <script>
     let files = [];
 
+    function triggerFileSelect() {
+      document.getElementById('fileInput').click();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+
     const dropArea = document.getElementById('dropArea');
-    dropArea.addEventListener('click', () => document.getElementById('fileInput').click());
     dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.style.background = '#f0f0ff'; });
     dropArea.addEventListener('dragleave', () => dropArea.style.background = '');
     dropArea.addEventListener('drop', e => {
@@ -113,9 +118,8 @@
       handleFiles(e.dataTransfer.files);
     });
 
-    document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
-
     function handleFiles(fileList) {
+      files = [];
       for (let file of fileList) {
         if (file.type === "application/pdf") {
           files.push({file, name: file.name, size: file.size, compressed: null, compressedSize: 0});
@@ -159,18 +163,40 @@
     async function compressSingle(index) {
       const item = files[index];
       const progressList = document.getElementById('progressList');
-      progressList.innerHTML += `<div class="file-item" id="prog-\( {index}"><div> \){item.name}</div><div style="width:200px;height:8px;background:#ddd;border-radius:10px;"><div id="bar-${index}" style="height:100%;width:0%;background:#4f46e5;border-radius:10px;"></div></div></div>`;
+      
+      progressList.innerHTML += `
+        <div class="file-item" id="prog-${index}">
+          <div>${item.name}</div>
+          <div style="width:220px;height:10px;background:#ddd;border-radius:10px;overflow:hidden;">
+            <div id="bar-${index}" style="height:100%;width:0%;background:linear-gradient(90deg,#4f46e5,#7c3aed);"></div>
+          </div>
+        </div>`;
 
       try {
         const arrayBuffer = await item.file.arrayBuffer();
         const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-        const compressedBytes = await pdfDoc.save({useObjectStreams: true});
-        const blob = new Blob([compressedBytes], {type: 'application/pdf'});
         
+        // Better compression
+        pdfDoc.setTitle('');
+        pdfDoc.setAuthor('');
+        pdfDoc.setSubject('');
+        pdfDoc.setKeywords([]);
+        pdfDoc.setProducer('');
+        pdfDoc.setCreator('');
+
+        const compressedBytes = await pdfDoc.save({
+          useObjectStreams: true,
+          compress: true
+        });
+
+        const blob = new Blob([compressedBytes], { type: 'application/pdf' });
         item.compressed = blob;
         item.compressedSize = blob.size;
+
         document.getElementById(`bar-${index}`).style.width = '100%';
-      } catch(e) { console.error(e); }
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function showResults() {
@@ -179,15 +205,20 @@
       container.innerHTML = '';
 
       files.forEach((item, i) => {
-        if(!item.compressed) return;
-        const orig = (item.size/1024/1024).toFixed(2);
-        const comp = (item.compressedSize/1024/1024).toFixed(2);
-        const saved = (((item.size - item.compressedSize)/item.size)*100).toFixed(1);
+        if (!item.compressed) return;
+        
+        const origMB = (item.size / 1024 / 1024).toFixed(2);
+        const compMB = (item.compressedSize / 1024 / 1024).toFixed(2);
+        const savedPercent = (((item.size - item.compressedSize) / item.size) * 100).toFixed(1);
 
         container.innerHTML += `
           <div class="file-item">
-            <div><strong>\( {item.name}</strong><br><small> \){orig} MB → \( {comp} MB ( \){saved}% बचत)</small></div>
-            <button onclick="downloadSingle(${i})">डाउनलोड</button>
+            <div>
+              <strong>${item.name}</strong><br>
+              <small>\( {origMB} MB → <strong> \){compMB} MB</strong> 
+              <span style="color:green">(${savedPercent}% बचत)</span></small>
+            </div>
+            <button onclick="downloadSingle(${i})">📥 डाउनलोड</button>
           </div>`;
       });
 
@@ -202,11 +233,6 @@
       a.download = 'compressed_' + item.name;
       a.click();
       URL.revokeObjectURL(url);
-    }
-
-    function downloadAll() {
-      if(files.length === 1) downloadSingle(0);
-      else alert("ZIP सुविधा जल्द आएगी। अभी एक-एक करके डाउनलोड करें।");
     }
 
     function resetAll() {
